@@ -3,6 +3,7 @@ package mc
 import (
 	"fmt"
 	"github.com/bmizerany/assert"
+	"log"
 	"math/rand"
 	"regexp"
 	"strconv"
@@ -1271,6 +1272,11 @@ func TestGAT(t *testing.T) {
 
 // Some basic tests that functions work
 func testThread(t *testing.T, id int, ch chan bool) {
+
+	defer func() {
+		ch <- true
+	}()
+
 	const (
 		KEY1 = "foo"
 		VAL1 = "boo"
@@ -1280,27 +1286,32 @@ func testThread(t *testing.T, id int, ch chan bool) {
 	idx := strconv.Itoa(id)
 	key2 := KEY1 + idx
 
+	idxBytes := []byte(idx)
+	VAL1Bytes := []byte(VAL1)
+
 	// lots of sets of this but should all be setting it to boo...
-	_, err := cn.Set(KEY1, []byte(VAL1), 0, 0, 0)
+	_, err := cn.Set(KEY1, VAL1Bytes, 0, 0, 0)
 	assert.Equalf(t, nil, err, "unexpected error: %v", err)
 
 	// should be unique to a thread...
-	cas2, err := cn.Set(key2, []byte(idx), 0, 0, 0)
+	cas2, err := cn.Set(key2, idxBytes, 0, 0, 0)
 	assert.Equalf(t, nil, err, "unexpected error: %v", err)
 
 	// contention but all setting same value...
 	v, _, _, err := cn.Get(KEY1)
 	assert.Equalf(t, nil, err, "unexpected error: %v", err)
-	assert.Equalf(t, VAL1, string(v), "wrong value: %s", v)
+	//assert.Equalf(t, VAL1, string(v), "wrong value: %s", v)
+	assert.Equalf(t, VAL1Bytes, v, "wrong value: %s", v)
 
 	// key is unique to thread, so even CAS shouldn't change...
 	v, _, cas2x, err := cn.Get(key2)
 	assert.Equalf(t, nil, err, "unexpected error: %v", err)
-	assert.Equalf(t, idx, v, "wrong value: %s", v)
+	//assert.Equalf(t, idx, v, "wrong value: %s", v)
+	assert.Equalf(t, idxBytes, v, "wrong value: %s", v)
 	assert.Equalf(t, cas2, cas2x, "CAS shouldn't have changed: %d, %d", cas2, cas2x)
 
 	// lots of sets of this and with diff values...
-	cas1, err := cn.Set(KEY3, []byte(idx), 0, 0, 0)
+	cas1, err := cn.Set(KEY3, idxBytes, 0, 0, 0)
 	assert.Equalf(t, nil, err, "unexpected error: %v", err)
 
 	// try getting straight away...
@@ -1308,15 +1319,18 @@ func testThread(t *testing.T, id int, ch chan bool) {
 	assert.Equalf(t, nil, err, "unexpected error: %v", err)
 	// if cas didn't change our value should have been returned...
 	if cas1 == cas1x {
-		assert.Equalf(t, idx, v, "wrong value (cas didn't change): %s", v)
+		//assert.Equalf(t, idx, v, "wrong value (cas didn't change): %s", v)
+		assert.Equalf(t, idxBytes, v, "wrong value (cas didn't change): %s", v)
 	}
 
-	ch <- true
+	//ch <- true
 }
 
 // Test threaded interaction...
 func TestThreaded(t *testing.T) {
 	testInit(t)
+
+	log.Println("Started TestThreaded")
 
 	ch := make(chan bool)
 
@@ -1327,6 +1341,8 @@ func TestThreaded(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		_ = <-ch
 	}
+
+	log.Println("Finished TestThreaded")
 }
 
 func testAdvGet(t *testing.T, op opCode, key string, expKey string, opq uint32) *msg {
