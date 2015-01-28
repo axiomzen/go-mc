@@ -54,7 +54,7 @@ import (
 //   seconds will actually expire somewhere in the range of (3,4) seconds.
 
 // Retrieve a value from the cache.
-func (cn *Conn) Get(key string) (val string, flags uint32, cas uint64, err error) {
+func (cn *Conn) Get(key string) (val []byte, flags uint32, cas uint64, err error) {
 	// Variants: [R] Get [Q, K, KQ]
 	// Request : MUST key; MUST NOT value, extras
 	// Response: MAY key, value, extras ([0..3] flags)
@@ -67,7 +67,7 @@ func (cn *Conn) Get(key string) (val string, flags uint32, cas uint64, err error
 // NOTE: GET doesn't actually care about CAS, but we want this internally for
 // testing purposes, to be able to test that a memcache server obeys the proper
 // semantics of ignoring CAS with GETs.
-func (cn *Conn) getCAS(key string, ocas uint64) (val string, flags uint32, cas uint64, err error) {
+func (cn *Conn) getCAS(key string, ocas uint64) (val []byte, flags uint32, cas uint64, err error) {
 	m := &msg{
 		header: header{
 			Op:  OpGet,
@@ -83,7 +83,7 @@ func (cn *Conn) getCAS(key string, ocas uint64) (val string, flags uint32, cas u
 
 // Get and Touch. Both get the value associated with the key and update its
 // expiration time.
-func (cn *Conn) GAT(key string, exp uint32) (val string, flags uint32, cas uint64, err error) {
+func (cn *Conn) GAT(key string, exp uint32) (val []byte, flags uint32, cas uint64, err error) {
 	// Variants: GAT [Q, K, KQ]
 	// Request : MUST key, extras; MUST NOT value
 	// Response: MAY key, value, extras ([0..3] flags)
@@ -117,27 +117,27 @@ func (cn *Conn) Touch(key string, exp uint32) (cas uint64, err error) {
 }
 
 // Set a key/value pair in the cache.
-func (cn *Conn) Set(key, val string, flags, exp uint32, ocas uint64) (cas uint64, err error) {
+func (cn *Conn) Set(key string, val []byte, flags, exp uint32, ocas uint64) (cas uint64, err error) {
 	// Variants: [R] Set [Q]
 	return cn.setGeneric(OpSet, key, val, ocas, flags, exp)
 }
 
 // Replace an existing key/value in the cache. Fails if key doesn't already
 // exist in cache.
-func (cn *Conn) Replace(key, val string, flags, exp uint32, ocas uint64) (cas uint64, err error) {
+func (cn *Conn) Replace(key string, val []byte, flags, exp uint32, ocas uint64) (cas uint64, err error) {
 	// Variants: Replace [Q]
 	return cn.setGeneric(OpReplace, key, val, ocas, flags, exp)
 }
 
 // Add a new key/value to the cache. Fails if the key already exists in the
 // cache.
-func (cn *Conn) Add(key, val string, flags, exp uint32) (cas uint64, err error) {
+func (cn *Conn) Add(key string, val []byte, flags, exp uint32) (cas uint64, err error) {
 	// Variants: Add [Q]
 	return cn.setGeneric(OpAdd, key, val, 0, flags, exp)
 }
 
 // Set/Add/Replace a key/value pair in the cache.
-func (cn *Conn) setGeneric(op opCode, key, val string, ocas uint64, flags, exp uint32) (cas uint64, err error) {
+func (cn *Conn) setGeneric(op opCode, key string, val []byte, ocas uint64, flags, exp uint32) (cas uint64, err error) {
 	// Request : MUST key, value, extras ([0..3] flags, [4..7] expiration)
 	// Response: MUST NOT key, value, extras
 	// CAS: If a CAS is specified (non-zero), all sets only succeed if the key
@@ -194,7 +194,7 @@ func (cn *Conn) incrdecr(op opCode, key string, delta, init uint64, exp uint32, 
 		return
 	}
 	// value is returned as an unsigned 64bit integer (i.e., not as a string)
-	return readInt(m.val), m.CAS, nil
+	return readInt(string(m.val)), m.CAS, nil
 }
 
 // Convert string stored to an uint64 (where no actual byte changes are needed).
@@ -210,7 +210,7 @@ func readInt(b string) uint64 {
 
 // Append the value to the existing value for the key specified. An error is
 // thrown if the key doesn't exist.
-func (cn *Conn) Append(key, val string, ocas uint64) (cas uint64, err error) {
+func (cn *Conn) Append(key string, val []byte, ocas uint64) (cas uint64, err error) {
 	// Variants: [R] Append [Q]
 	// Request : MUST key, value; MUST NOT extras
 	// Response: MUST NOT key, value, extras
@@ -229,7 +229,7 @@ func (cn *Conn) Append(key, val string, ocas uint64) (cas uint64, err error) {
 
 // Prepend the value to the existing value for the key specified. An error is
 // thrown if the key doesn't exist.
-func (cn *Conn) Prepend(key, val string, ocas uint64) (cas uint64, err error) {
+func (cn *Conn) Prepend(key string, val []byte, ocas uint64) (cas uint64, err error) {
 	// Variants: [R] Append [Q]
 	// Request : MUST key, value; MUST NOT extras
 	// Response: MUST NOT key, value, extras
@@ -319,7 +319,7 @@ func (cn *Conn) Version() (ver string, err error) {
 	}
 
 	err = cn.sendRecv(m)
-	return m.val, err
+	return string(m.val), err
 }
 
 // Close connection with memcache server (nicely).
@@ -366,7 +366,7 @@ func (cn *Conn) Stats() (stats map[string]string, err error) {
 		if err != nil || m.KeyLen == 0 {
 			return
 		}
-		stats[m.key] = m.val
+		stats[m.key] = string(m.val)
 	}
 
 	return

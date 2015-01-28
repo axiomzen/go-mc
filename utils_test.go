@@ -55,7 +55,7 @@ func get(t *testing.T, key, val string, ecas uint64, eerr error) {
 }
 
 func set(t *testing.T, key, val string, ocas uint64, flags, exp uint32, ecas uint64, eerr error) {
-	ocas, err := cn.Set(key, val, 0, 0, 0)
+	ocas, err := cn.Set(key, []byte(val), 0, 0, 0)
 	assert.Equalf(t, eerr, err, "shouldn't be an error: %v", err)
 	if ecas != 0 {
 		assert.Equalf(t, ecas, ocas, "wrong CAS for get: %d != %d", ocas, ecas)

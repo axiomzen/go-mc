@@ -88,7 +88,8 @@ func (cn *Conn) send(m *msg) (err error) {
 		return
 	}
 
-	_, err = io.WriteString(cn.buf, m.val)
+	err = binary.Write(cn.buf, binary.BigEndian, m.val)
+	//_, err = io.WriteString(cn.buf, m.val)
 	if err != nil {
 		return
 	}
@@ -126,7 +127,7 @@ func (cn *Conn) recv(m *msg) (err error) {
 
 	m.key = string(buf.Next(int(m.KeyLen)))
 	vlen := int(m.BodyLen) - int(m.ExtraLen) - int(m.KeyLen)
-	m.val = string(buf.Next(int(vlen)))
+	m.val = buf.Next(int(vlen))
 
 	return checkError(m)
 }

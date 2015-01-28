@@ -116,5 +116,5 @@ type msg struct {
 	oextras []interface{} // [24..(m-1)] Command specifc extras (Out)
 
 	key string // [m..(n-1)] Key (as needed, length in header)
-	val string // [n..x] Value (as needed, length in header)
+	val []byte // [n..x] Value (as needed, length in header)
 }
