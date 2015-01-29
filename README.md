@@ -1,7 +1,7 @@
 # go-mc
 Go client for memcachier (memcached); uses binary protocol and supports SASL auth; sharding not supported
 
-Substantial work was taken from github.com/memcachier/mc which was forked from https://github.com/bmizerany/mc
+Substantial work was taken from https://github.com/memcachier/mc which was forked from https://github.com/bmizerany/mc
 
 Copying liscence found at original repository:
 
